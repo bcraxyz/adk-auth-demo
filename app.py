@@ -1,22 +1,3 @@
-"""Streamlit thin client for the deployed agent.
-
-This file does NOT construct an LlmAgent. It opens streaming queries
-against a deployed Agent Engine (resource name in env) and renders the
-responses. Tools run on the deployed agent under its SPIFFE identity,
-not in this Streamlit process.
-
-Responsibilities:
-  • Sidebar mode selector
-  • Prefix every prompt with [Mode: <name>] so the agent's instruction
-    can dispatch to the right tool
-  • Clear chat on mode switch (UX only)
-  • 3LO consent dance:
-      - Detect adk_request_credential events in the agent's stream
-      - Render a "Connect to Microsoft" link button
-      - Catch the redirect back to this app's URL with consent state
-      - Call FinalizeCredentials and resume the agent stream
-"""
-
 import asyncio
 import os
 import uuid
@@ -31,9 +12,9 @@ from google.genai import types as genai_types
 
 load_dotenv()
 
-st.set_page_config(page_title="ADK Agent Identity Demo", page_icon="🔐", layout="wide")
+st.set_page_config(page_title="ADK Auth Demo", page_icon="🔐", layout="wide")
 
-MODES = ["Agent Identity", "API Key", "OAuth 2LO", "OAuth 3LO"]
+MODES = ["Agent Identity", "OAuth 2LO", "OAuth 3LO", "API Key"]
 
 
 # ─── Session state ─────────────────────────────────────────────────────────
@@ -134,9 +115,9 @@ maybe_finalize_3lo()
 
 # ─── Sidebar ───────────────────────────────────────────────────────────────
 with st.sidebar:
-    st.title("🔐 Auth modes")
+    st.title("🔐 ADK Auth Demo")
     new_mode = st.radio(
-        "Pick an authentication pattern:",
+        "Pick an authentication mode:",
         options=MODES,
         index=MODES.index(st.session_state.mode),
         key="mode_radio",
@@ -148,26 +129,24 @@ with st.sidebar:
 
     st.markdown("---")
     st.caption(
-        "**Agent Identity** — Lists GCS buckets using the agent's "
-        "SPIFFE-bound identity."
+        "**Agent Identity** — Lists GCS buckets using "
+        "the agent's SPIFFE-bound identity."
     )
     st.caption(
-        "**API Key** — Sends an email via Resend. Key fetched from Auth "
+        "**OAuth 2LO** — Lists users in a Microsoft tenant using "
+        "the agent's app-only token."
+    )
+    st.caption(
+        "**OAuth 3LO** — Lists users in a Microsoft tenant using delegation, "
+        "with the agent acting as the signed-in user."
+    )
+    st.caption(
+        "**API Key** — Sends an email via Resend. API key fetched from Auth "
         "Manager at call time."
     )
-    st.caption(
-        "**OAuth 2LO** — Lists users in a Microsoft tenant using the "
-        "agent's app-only token."
-    )
-    st.caption(
-        "**OAuth 3LO** — Same query, acting as the signed-in user. "
-        "Microsoft Graph constrains the result. That contrast is the demo."
-    )
-
+    
 
 # ─── Main pane ─────────────────────────────────────────────────────────────
-st.title(f"Mode: {st.session_state.mode}")
-
 if st.session_state.consent_auth_uri:
     st.warning("The agent needs you to consent before it can act on your behalf.")
     st.link_button(
