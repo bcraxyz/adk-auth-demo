@@ -32,7 +32,13 @@ def _retrieve_api_key(auth_provider_name: str) -> str:
         json={},
         timeout=10,
     )
-    resp.raise_for_status()
+    
+    if resp.status_code != 200:
+        raise RuntimeError(
+            f"Auth Manager API failed with status {resp.status_code}."
+            f"URL: {url} | Details: {resp.text}"
+        )
+    
     payload = resp.json()
     api_key = payload.get("apiKey", {}).get("apiKey")
     if not api_key:
