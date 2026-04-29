@@ -40,11 +40,16 @@ def _retrieve_api_key(auth_provider_name: str) -> str:
         )
     
     payload = resp.json()
-    api_key = payload.get("apiKey", {}).get("apiKey")
+    if "response" in payload:
+        data = payload["response"]
+    else:
+        data = payload
+        
+    api_key = data.get("apiKey") or data.get("api_key")
     if not api_key:
         raise RuntimeError(
-            f"Auth Manager returned no apiKey field for {auth_provider_name}. "
-            f"Response keys: {list(payload.keys())}"
+            f"Auth Manager returned no API key field for {auth_provider_name}. "
+            f"Response keys: {list(data.keys())}"
         )
     return api_key
 
