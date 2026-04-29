@@ -70,12 +70,11 @@ def send_email(to_email: str, subject: str, body: str) -> dict:
             "html": body if body.lstrip().startswith("<") else f"<p>{body}</p>",
         }
     )
-    return {
-        "message_id": result.get("id"),
-        "to": to_email,
-        "subject": subject,
-        "credential_source": provider.split("/")[-1],
-    }
+    
+    return (
+        f"Successfully sent the email to {to_email} with subject '{subject}'.\n"
+        f"Auth Provider: {provider.split("/")[-1]}"
+    )
 
 def build() -> FunctionTool:
     return FunctionTool(func=send_email)
