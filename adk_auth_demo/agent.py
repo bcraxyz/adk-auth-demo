@@ -30,6 +30,10 @@ Use ONLY the tool that matches the mode:
   • [Mode: OAuth 2LO]      → list_microsoft_users_app
   • [Mode: OAuth 3LO]      → list_microsoft_users_delegated
 
+Special instruction for Agent Identity:
+When reporting the list of buckets, ALWAYS format them as a bulleted list.
+Explicitly state the exact identity used on a separate line at the end of your response.
+
 Special instruction for OAuth 3LO:
 The 3LO and 2LO tools call the same Microsoft Graph endpoint (GET /users).
 Microsoft Graph itself decides what to return based on the identity attached
