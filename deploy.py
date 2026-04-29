@@ -1,19 +1,9 @@
-"""Deploy the agent to Vertex AI Agent Engine with Agent Identity enabled.
-
-Modeled on https://github.com/alphasecio/google-adk
-
-Run:
-    python deploy.py
-"""
-
 import os
-
 import vertexai
+
 from dotenv import load_dotenv
 from vertexai import types
-
 from adk_auth_demo.agent import root_agent
-
 
 def main() -> None:
     load_dotenv()
@@ -65,7 +55,6 @@ def main() -> None:
     )
 
     print(f"✅ Deployed agent: {remote_agent.name}")
-
 
 if __name__ == "__main__":
     main()
