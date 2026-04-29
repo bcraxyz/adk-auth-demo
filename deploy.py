@@ -41,6 +41,8 @@ def main() -> None:
             "google-cloud-storage",
             "google-auth",
             "resend",
+            "pydantic",
+            "cloudpickle",
         ],
         "extra_packages": [f"./{root_agent.name}"],
         "staging_bucket": f"gs://{bucket}",
