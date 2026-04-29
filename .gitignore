@@ -1,0 +1,28 @@
+# Secrets — never commit
+.env
+*.json
+!**/package.json
+!**/package-lock.json
+
+# Service account keys (uploaded to Codespaces ephemeral FS, not the repo)
+credentials/
+sa-*.json
+key-*.json
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+.venv/
+venv/
+env/
+.python-version
+
+# Streamlit
+.streamlit/secrets.toml
+
+# IDE
+.vscode/
+.idea/
+*.swp
+.DS_Store
