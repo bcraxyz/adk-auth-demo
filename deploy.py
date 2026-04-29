@@ -46,6 +46,7 @@ def main() -> None:
                 "requests (>=2.33.1)",
                 "httpx (>=0.28.1)",
                 "pydantic (>=2.13.3,<3.0.0)",
+                "cloudpickle (>=3.1.2)"
             ],
             "extra_packages": [f"./{root_agent.name}"],
             "staging_bucket": f"gs://{bucket}",
