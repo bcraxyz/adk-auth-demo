@@ -2,12 +2,12 @@ import os
 import vertexai
 
 from dotenv import load_dotenv
+load_dotenv()
+
 from vertexai import types
 from adk_auth_demo.agent import root_agent
 
 def main() -> None:
-    load_dotenv()
-
     project_id = os.environ["GOOGLE_CLOUD_PROJECT"]
     location = os.environ["GOOGLE_CLOUD_LOCATION"]
     bucket = os.environ["GOOGLE_CLOUD_STORAGE_BUCKET"]
@@ -21,7 +21,6 @@ def main() -> None:
             "AUTH_PROVIDER_MSGRAPH_2LO",
             "AUTH_PROVIDER_MSGRAPH_3LO",
             "RESEND_FROM_EMAIL",
-            "RESEND_TO_EMAIL",
             "REDIRECT_URI",
         )
         if k in os.environ
