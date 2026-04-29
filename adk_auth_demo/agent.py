@@ -1,9 +1,4 @@
-"""Root agent definition.
-
-One agent, four tools, one SPIFFE identity. The Streamlit frontend prefixes
-every prompt with [Mode: <name>] and the instruction below tells the model
-which tool to use.
-"""
+"""Root agent with four tools, one SPIFFE identity."""
 
 from google.adk.agents.llm_agent import Agent
 
@@ -14,7 +9,6 @@ from adk_auth_demo.tools import (
     oauth_3lo_tool,
 )
 
-
 root_agent = Agent(
     name="adk_auth_demo",
     model="gemini-2.5-flash",
@@ -22,14 +16,14 @@ root_agent = Agent(
 on Google Cloud's Agent Platform.
 
 The frontend prefixes every prompt with one of:
-[Mode: Agent Identity], [Mode: API Key], [Mode: OAuth 2LO], [Mode: OAuth 3LO].
+[Mode: Agent Identity], [Mode: OAuth 2LO], [Mode: OAuth 3LO], [Mode: API Key].
 
 Use ONLY the tool that matches the mode:
   • [Mode: Agent Identity] → list_gcs_buckets
-  • [Mode: API Key]        → send_demo_email
   • [Mode: OAuth 2LO]      → list_microsoft_users_app
   • [Mode: OAuth 3LO]      → list_microsoft_users_delegated
-
+  • [Mode: API Key]        → send_email
+  
 Special instruction for Agent Identity:
 When reporting the list of buckets, ALWAYS format them as a bulleted list.
 Explicitly state the exact identity used on a separate line at the end of your response.
