@@ -63,7 +63,7 @@ def main() -> None:
             config=agent_config,
         )
 
-    print(f"✅ Deployed agent: {remote_agent.resource_name}")
+    print(f"✅ Deployed agent: {remote_agent}")
 
 if __name__ == "__main__":
     main()
