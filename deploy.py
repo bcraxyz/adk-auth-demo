@@ -51,7 +51,7 @@ def main() -> None:
         },
     )
 
-    print(f"✅ Deployed agent: {remote_agent.name}")
+    print(f"✅ Deployed agent: {remote_agent.resource_name}")
 
 if __name__ == "__main__":
     main()
