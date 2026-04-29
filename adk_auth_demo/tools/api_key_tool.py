@@ -72,7 +72,7 @@ def send_email(to_email: str, subject: str, body: str) -> dict:
     )
     return {
         "message_id": result.get("id"),
-        "to": to_addr,
+        "to": to_email,
         "subject": subject,
         "credential_source": provider.split("/")[-1],
     }
