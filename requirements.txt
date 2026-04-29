@@ -1,0 +1,10 @@
+streamlit>=1.57.0
+google-cloud-aiplatform[agent_engines,adk]>=1.149.0
+google-adk[agent-identity]>=1.31.1
+google-genai>=1.73.1
+google-cloud-storage>=3.10.1
+google-auth>=2.49.2
+resend>=2.29.0
+requests>=2.33.1
+httpx>=0.28.1
+python-dotenv>=1.2.2
