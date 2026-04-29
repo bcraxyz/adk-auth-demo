@@ -29,7 +29,7 @@ def _retrieve_api_key(auth_provider_name: str) -> str:
             "Authorization": f"Bearer {creds.token}",
             "Content-Type": "application/json",
         },
-        json={},
+        json={"user_id": "agent-runtime-context"},
         timeout=10,
     )
     
