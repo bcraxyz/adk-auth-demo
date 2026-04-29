@@ -11,9 +11,8 @@ def main() -> None:
     project_id = os.environ["GOOGLE_CLOUD_PROJECT"]
     location = os.environ["GOOGLE_CLOUD_LOCATION"]
     bucket = os.environ["GOOGLE_CLOUD_STORAGE_BUCKET"]
+    agent_id = os.environ.get("AGENT_ENGINE_RESOURCE_NAME")
 
-    # The deployed agent reads these from os.environ at runtime, so we
-    # pass them through verbatim.
     runtime_env = {
         k: os.environ[k]
         for k in (
@@ -32,24 +31,35 @@ def main() -> None:
         http_options=dict(api_version="v1beta1"),
     )
 
-    remote_agent = client.agent_engines.create(
-        agent=root_agent,
-        config={
-            "display_name": root_agent.name,
-            "identity_type": types.IdentityType.AGENT_IDENTITY,
-            "requirements": [
-                "google-adk[agent-identity]",
-                "google-cloud-aiplatform[agent_engines]",
-                "google-genai",
-                "google-cloud-storage",
-                "google-auth",
-                "resend",
-            ],
-            "extra_packages": [f"./{root_agent.name}"],
-            "staging_bucket": f"gs://{bucket}",
-            "env_vars": runtime_env,
-        },
-    )
+    agent_config={
+        "display_name": root_agent.name,
+        "identity_type": types.IdentityType.AGENT_IDENTITY,
+        "requirements": [
+            "google-adk[agent-identity]",
+            "google-cloud-aiplatform[agent_engines]",
+            "google-genai",
+            "google-cloud-storage",
+            "google-auth",
+            "resend",
+        ],
+        "extra_packages": [f"./{root_agent.name}"],
+        "staging_bucket": f"gs://{bucket}",
+        "env_vars": runtime_env,
+    }
+
+    if agent_id:
+        print(f"🔄 Updating existing agent: {agent_id}...")
+        remote_agent = client.agent_engines.update(
+            name=agent_id,
+            agent=root_agent,
+            config=agent_config,
+        )
+    else:
+        print("🚀 Creating a new agent...")
+        remote_agent = client.agent_engines.create(
+            agent=root_agent,
+            config=agent_config,
+        )
 
     print(f"✅ Deployed agent: {remote_agent.resource_name}")
 
