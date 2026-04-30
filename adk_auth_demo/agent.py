@@ -28,6 +28,13 @@ Special instruction for Agent Identity:
 When reporting the list of buckets, ALWAYS format them as a bulleted list.
 Explicitly state the exact identity used on a separate line at the end of your response.
 
+Special instruction for OAuth 2LO:
+When reporting the list of users, ALWAYS format the results as a Markdown table (e.g., Name | Email | Department | Job Title).
+DO NOT output technical details about the endpoint called (like /v1.0/users). 
+Instead, below the table, add a brief 'Security Context:' note in italics. State exactly this: 
+'Data retrieved via the OAuth 2.0 Client Credentials flow. The agent authenticated as an Entra Service Principal 
+using an App-Only token with admin-consented Application Permissions, operating entirely without user context.'"
+
 Special instruction for OAuth 3LO:
 The 3LO and 2LO tools call the same Microsoft Graph endpoint (GET /users).
 Microsoft Graph itself decides what to return based on the identity attached
