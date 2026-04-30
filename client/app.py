@@ -1,7 +1,6 @@
 import asyncio
 import os
 import uuid
-
 import google.auth
 import httpx
 import streamlit as st
@@ -15,9 +14,6 @@ load_dotenv()
 st.set_page_config(page_title="ADK Auth Demo", page_icon="🔐", layout="wide")
 
 MODES = ["Agent Identity", "OAuth 2LO", "OAuth 3LO", "API Key"]
-
-
-# ─── Session state ─────────────────────────────────────────────────────────
 DEFAULTS = {
     "mode": MODES[0],
     "messages": [],
@@ -32,7 +28,6 @@ DEFAULTS = {
 for k, v in DEFAULTS.items():
     st.session_state.setdefault(k, v)
 
-
 def reset_chat() -> None:
     st.session_state.messages = []
     st.session_state.session_id = None
@@ -42,8 +37,6 @@ def reset_chat() -> None:
     st.session_state.auth_config = None
     st.session_state.auth_resume_pending = False
 
-
-# ─── Connect to deployed agent ─────────────────────────────────────────────
 @st.cache_resource(show_spinner=False)
 def get_remote_agent():
     project = os.environ["GOOGLE_CLOUD_PROJECT"]
@@ -58,11 +51,8 @@ def get_remote_agent():
     )
     return client.agent_engines.get(name=resource_name)
 
-
 remote_agent = get_remote_agent()
 
-
-# ─── 3LO consent finalization ──────────────────────────────────────────────
 def _gcp_token() -> str:
     creds, _ = google.auth.default(
         scopes=["https://www.googleapis.com/auth/cloud-platform"]
@@ -70,7 +60,6 @@ def _gcp_token() -> str:
     if not creds.valid:
         creds.refresh(Request())
     return creds.token
-
 
 def maybe_finalize_3lo() -> None:
     qp = st.query_params
@@ -109,11 +98,9 @@ def maybe_finalize_3lo() -> None:
     st.session_state.auth_resume_pending = True
     st.success("✓ Consent granted. Send your prompt again to continue.")
 
-
 maybe_finalize_3lo()
 
 
-# ─── Sidebar ───────────────────────────────────────────────────────────────
 with st.sidebar:
     st.title("🔐 ADK Auth Demo")
     new_mode = st.radio(
@@ -145,12 +132,10 @@ with st.sidebar:
         "Manager at call time."
     )
     
-
-# ─── Main pane ─────────────────────────────────────────────────────────────
 if st.session_state.consent_auth_uri:
     st.warning("The agent needs you to consent before it can act on your behalf.")
     st.link_button(
-        "→ Connect to Microsoft and grant consent",
+        "→ Authorize",
         st.session_state.consent_auth_uri,
     )
     st.caption(
@@ -162,8 +147,6 @@ for role, text in st.session_state.messages:
     with st.chat_message(role):
         st.markdown(text)
 
-
-# ─── Helpers ───────────────────────────────────────────────────────────────
 def _find_auth_request(event_dict: dict) -> dict | None:
     content = event_dict.get("content") or {}
     for part in content.get("parts", []) or []:
@@ -172,13 +155,14 @@ def _find_auth_request(event_dict: dict) -> dict | None:
             return fc
     return None
 
-
 def _extract_consent(fc: dict) -> tuple[str | None, str | None, dict | None]:
     args = fc.get("args") or {}
-    auth_config = args.get("auth_config") or {}
-    exchanged = (auth_config.get("exchanged_auth_credential") or {}).get("oauth2") or {}
-    return exchanged.get("auth_uri"), exchanged.get("nonce"), auth_config
-
+    auth_config = args.get("auth_config") or args.get("authConfig") or {}
+    exchanged = auth_config.get("exchanged_auth_credential") or auth_config.get("exchangedAuthCredential") or {}
+    oauth2 = exchanged.get("oauth2") or {}
+    auth_uri = oauth2.get("auth_uri") or oauth2.get("authUri")
+    nonce = oauth2.get("nonce")
+    return auth_uri, nonce, auth_config
 
 async def ensure_session() -> str:
     if st.session_state.session_id:
@@ -190,10 +174,8 @@ async def ensure_session() -> str:
     st.session_state.session_id = sid
     return sid
 
-
 async def run_turn(user_prompt: str) -> str:
     session_id = await ensure_session()
-
     if st.session_state.auth_resume_pending and st.session_state.auth_config:
         message = genai_types.Content(
             role="user",
@@ -231,7 +213,7 @@ async def run_turn(user_prompt: str) -> str:
                 st.session_state.auth_config = auth_config
                 return (
                     "I need your consent to act on your behalf. "
-                    "Please click the **Connect to Microsoft** button above."
+                    "Please click the **Authorize** button above."
                 )
 
         content = ev.get("content") or {}
@@ -242,8 +224,6 @@ async def run_turn(user_prompt: str) -> str:
 
     return "".join(final_text) or "(no response)"
 
-
-# ─── Chat input ────────────────────────────────────────────────────────────
 prompt = st.chat_input(
     "Try: 'list my buckets' / 'send a test email' / 'list users in the tenant'"
 )
