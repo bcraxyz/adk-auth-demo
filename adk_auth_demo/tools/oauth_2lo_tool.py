@@ -32,7 +32,8 @@ async def list_microsoft_users_app(credential: AuthCredential) -> dict:
 def build() -> AuthenticatedFunctionTool:
     auth_config = AuthConfig(
         auth_scheme=GcpAuthProviderScheme(
-            name=os.environ["AUTH_PROVIDER_MSGRAPH_2LO"]
+            name=os.environ["AUTH_PROVIDER_MSGRAPH_2LO"],
+            scopes=["https://graph.microsoft.com/.default"]
         )
     )
     return AuthenticatedFunctionTool(
