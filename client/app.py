@@ -115,33 +115,15 @@ with st.sidebar:
         st.rerun()
 
     st.markdown("---")
-    st.caption(
-        "**Agent Identity** — Lists GCS buckets using "
-        "the agent's SPIFFE-bound identity."
-    )
-    st.caption(
-        "**OAuth 2LO** — Lists users in a Microsoft tenant using "
-        "the agent's app-only token."
-    )
-    st.caption(
-        "**OAuth 3LO** — Lists users in a Microsoft tenant using delegation, "
-        "with the agent acting as the signed-in user."
-    )
-    st.caption(
-        "**API Key** — Sends an email via Resend. API key fetched from Auth "
-        "Manager at call time."
-    )
-    
-if st.session_state.consent_auth_uri:
-    st.warning("The agent needs you to consent before it can act on your behalf.")
-    st.link_button(
-        "→ Authorize",
-        st.session_state.consent_auth_uri,
-    )
-    st.caption(
-        "After consenting, you'll be redirected back here. Then re-send "
-        "your prompt to continue."
-    )
+    st.caption("**Agent Identity** — Lists GCS buckets using the agent's SPIFFE-bound identity.")
+    st.caption("**OAuth 2LO** — Lists users in Entra using the agent's app-only token.")
+    st.caption("**OAuth 3LO** — Lists users in Entra using delegation, with the agent acting as the signed-in user.")
+    st.caption("**API Key** — Sends an email via Resend. API key fetched from Auth Manager at call time.")
+
+    if st.session_state.consent_auth_uri:
+        st.warning("The agent needs you to consent before it can act on your behalf.")
+        st.link_button("→ Authorize", st.session_state.consent_auth_uri)
+        st.caption("After consenting, you'll be redirected back here. Then re-send your prompt to continue.")
 
 for role, text in st.session_state.messages:
     with st.chat_message(role):
@@ -167,9 +149,7 @@ def _extract_consent(fc: dict) -> tuple[str | None, str | None, dict | None]:
 async def ensure_session() -> str:
     if st.session_state.session_id:
         return st.session_state.session_id
-    session = await remote_agent.async_create_session(
-        user_id=st.session_state.user_id
-    )
+    session = await remote_agent.async_create_session(user_id=st.session_state.user_id)
     sid = session["id"] if isinstance(session, dict) else session.id
     st.session_state.session_id = sid
     return sid
@@ -211,10 +191,7 @@ async def run_turn(user_prompt: str) -> str:
                 st.session_state.consent_nonce = nonce
                 st.session_state.auth_request_function_call_id = fc.get("id")
                 st.session_state.auth_config = auth_config
-                return (
-                    "I need your consent to act on your behalf. "
-                    "Please click the **Authorize** button above."
-                )
+                return ("I need your consent to act on your behalf. Please click the **Authorize** button.")
 
         content = ev.get("content") or {}
         if content.get("role") == "model":
@@ -225,7 +202,7 @@ async def run_turn(user_prompt: str) -> str:
     return "".join(final_text) or "(no response)"
 
 prompt = st.chat_input(
-    "Try: 'list my buckets' / 'send a test email' / 'list users in the tenant'"
+    "Try: 'list my storage buckets' / 'send a test email' / 'list users in Entra'"
 )
 if prompt:
     st.session_state.messages.append(("user", prompt))
