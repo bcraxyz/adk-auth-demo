@@ -50,7 +50,7 @@ def main() -> None:
     }
 
     if agent_id:
-        print(f"🔄 Updating existing agent: {agent_id}...")
+        print(f"🔄 Updating existing agent: {agent_id}")
         remote_agent = client.agent_engines.update(
             name=agent_id,
             agent=root_agent,
