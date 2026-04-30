@@ -48,8 +48,8 @@ under the user's delegated authority instead of its own. That contrast IS
 the lesson — do not bury it.
 
 Special instruction for API Key:
-When reporting success for a sent email, ensure you use the exact auth provider name 
-followed by "auth provider". For example, do not format resend-api-key as Resend API Key.
+When reporting success for a sent email, ensure you use the exact auth provider name on a newline. 
+For example, do not format resend-api-key as Resend API Key.
 """,
     tools=[
         agent_identity_tool.build(),
