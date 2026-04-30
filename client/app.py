@@ -20,7 +20,6 @@ DEFAULTS = {
     "session_id": None,
     "user_id": "demo-user",
     "consent_auth_uri": None,
-    "consent_nonce": None,
     "auth_request_function_call_id": None,
     "auth_config": None,
     "auth_resume_pending": False,
@@ -32,7 +31,6 @@ def reset_chat() -> None:
     st.session_state.messages = []
     st.session_state.session_id = None
     st.session_state.consent_auth_uri = None
-    st.session_state.consent_nonce = None
     st.session_state.auth_request_function_call_id = None
     st.session_state.auth_config = None
     st.session_state.auth_resume_pending = False
@@ -53,6 +51,11 @@ def get_remote_agent():
 
 remote_agent = get_remote_agent()
 
+@st.cache_resource
+def get_nonce_store() -> dict:
+    """A global dictionary shared across all browser tabs to survive redirects."""
+    return {}
+
 def _gcp_token() -> str:
     creds, _ = google.auth.default(
         scopes=["https://www.googleapis.com/auth/cloud-platform"]
@@ -65,7 +68,9 @@ def maybe_finalize_3lo() -> None:
     qp = st.query_params
     state = qp.get("user_id_validation_state")
     provider = qp.get("auth_provider_name")
-    if not (state and provider and st.session_state.consent_nonce):
+
+    nonce = get_nonce_store().get(st.session_state.user_id)
+    if not (state and provider and nonce):
         return
 
     finalize_url = (
@@ -75,7 +80,7 @@ def maybe_finalize_3lo() -> None:
     payload = {
         "userId": st.session_state.user_id,
         "userIdValidationState": state,
-        "consentNonce": st.session_state.consent_nonce,
+        "consentNonce": nonce,
     }
     try:
         resp = httpx.post(
@@ -94,8 +99,8 @@ def maybe_finalize_3lo() -> None:
 
     st.query_params.clear()
     st.session_state.consent_auth_uri = None
-    st.session_state.consent_nonce = None
     st.session_state.auth_resume_pending = True
+    get_nonce_store().pop(st.session_state.user_id, None)
     st.success("✓ Consent granted. Send your prompt again to continue.")
 
 maybe_finalize_3lo()
@@ -121,9 +126,9 @@ with st.sidebar:
     st.caption("**API Key** — Sends an email via Resend. API key fetched from Auth Manager at call time.")
 
     if st.session_state.consent_auth_uri:
-        st.warning("The agent needs you to consent before it can act on your behalf.")
+        st.markdown("---")
+        st.caption("Click the button to provide your consent. Once you're redirected here, send your prompt again to continue.")
         st.link_button("→ Authorize", st.session_state.consent_auth_uri)
-        st.caption("After consenting, you'll be redirected back here. Then re-send your prompt to continue.")
 
 for role, text in st.session_state.messages:
     with st.chat_message(role):
@@ -188,7 +193,7 @@ async def run_turn(user_prompt: str) -> str:
             auth_uri, nonce, auth_config = _extract_consent(fc)
             if auth_uri and nonce:
                 st.session_state.consent_auth_uri = auth_uri
-                st.session_state.consent_nonce = nonce
+                get_nonce_store()[st.session_state.user_id] = nonce
                 st.session_state.auth_request_function_call_id = fc.get("id")
                 st.session_state.auth_config = auth_config
                 return ("I need your consent to act on your behalf. Please click the **Authorize** button.")
