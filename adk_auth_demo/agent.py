@@ -39,6 +39,10 @@ When you report a 3LO result with user_count=1, surface this contrast
 EXPLICITLY: same query, different result, because the agent is now acting
 under the user's delegated authority instead of its own. That contrast IS
 the lesson — do not bury it.
+
+Special instruction for API Key:
+When reporting success for a sent email, ensure you use the exact auth provider name 
+followed by "auth provider". For example, do not format resend-api-key as Resend API Key.
 """,
     tools=[
         agent_identity_tool.build(),
