@@ -5,7 +5,6 @@ from google.adk.auth.auth_credential import AuthCredential
 from google.adk.auth.auth_tool import AuthConfig
 from google.adk.integrations.agent_identity import GcpAuthProviderScheme
 from google.adk.tools.authenticated_function_tool import AuthenticatedFunctionTool
-
 from adk_auth_demo.tools._msgraph import graph_list_users
 
 async def list_microsoft_users_delegated(credential: AuthCredential) -> dict:
