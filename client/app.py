@@ -137,10 +137,14 @@ with st.sidebar:
         st.link_button("→ Authorize", _user_state()["auth_uri"], use_container_width=True)
 
     # ── DIAGNOSTIC ────────────────────────────────────────
-    with st.expander("debug: user_state", expanded=False):
+    with st.expander("debug: user_state", expanded=True):
         st.write({k: (v if k != "auth_uri" else f"{str(v)[:60]}...") for k, v in _user_state().items()})
         if "_last_consent_extract" in st.session_state:
             st.write("last extract:", st.session_state["_last_consent_extract"])
+        if "_last_events" in st.session_state:
+            st.write(f"event count: {len(st.session_state['_last_events'])}")
+            for i, ev in enumerate(st.session_state["_last_events"]):
+                st.json(ev, expanded=False)
     # ── END DIAGNOSTIC ────────────────────────────────────────
 
 for role, text in st.session_state.messages:
