@@ -1,5 +1,7 @@
 import asyncio
 import os
+import sys
+
 import google.auth
 import httpx
 import streamlit as st
@@ -9,9 +11,15 @@ from google.auth.transport.requests import Request
 
 load_dotenv()
 
+
+def _log(msg: str) -> None:
+    """Print to stderr so it shows up in Cloud Run logs."""
+    print(f"[DEMO] {msg}", file=sys.stderr, flush=True)
+
 st.set_page_config(page_title="ADK Auth Demo", page_icon="🔐", layout="wide")
 
 MODES = ["Agent Identity", "OAuth 2LO", "OAuth 3LO", "API Key"]
+
 
 @st.cache_resource(show_spinner=False)
 def get_remote_agent():
@@ -26,14 +34,18 @@ def get_remote_agent():
     )
     return client.agent_engines.get(name=resource_name)
 
+
 @st.cache_resource
 def get_global_state() -> dict:
     """Process-wide state that survives the OAuth redirect (which spawns
     a new Streamlit session). Keyed by user_id."""
     return {}
 
+
 remote_agent = get_remote_agent()
 
+
+# ─── Session state ─────────────────────────────────────────────────────────
 if "user_id" not in st.session_state:
     st.session_state.user_id = "demo-user"
 if "messages" not in st.session_state:
@@ -44,8 +56,10 @@ if "mode" not in st.session_state:
         get_global_state().get(st.session_state.user_id, {}).get("mode", MODES[0])
     )
 
+
 def _user_state() -> dict:
     return get_global_state().setdefault(st.session_state.user_id, {})
+
 
 def reset_chat() -> None:
     """Switch modes: clear messages but keep any pending auth state alive."""
@@ -53,6 +67,8 @@ def reset_chat() -> None:
     us = _user_state()
     us.pop("session_id", None)
 
+
+# ─── 3LO callback ──────────────────────────────────────────────────────────
 def _gcp_token() -> str:
     creds, _ = google.auth.default(
         scopes=["https://www.googleapis.com/auth/cloud-platform"]
@@ -60,6 +76,7 @@ def _gcp_token() -> str:
     if not creds.valid:
         creds.refresh(Request())
     return creds.token
+
 
 def maybe_finalize_3lo() -> None:
     """Auth Manager redirects back with `user_id_validation_state` and
@@ -107,12 +124,15 @@ def maybe_finalize_3lo() -> None:
     st.query_params.clear()
     st.success("✓ Consent granted. Re-send your prompt to continue.")
 
+
 maybe_finalize_3lo()
 
+
+# ─── Sidebar ───────────────────────────────────────────────────────────────
 with st.sidebar:
     st.title("🔐 ADK Auth Demo")
     new_mode = st.radio(
-        "Authentication mode:",
+        "Pick an authentication mode:",
         options=MODES,
         index=MODES.index(st.session_state.mode),
         key="mode_radio",
@@ -136,7 +156,7 @@ with st.sidebar:
         st.caption("Click to authorize. After redirect, send your prompt again.")
         st.link_button("→ Authorize", _user_state()["auth_uri"], use_container_width=True)
 
-    # ── DIAGNOSTIC ────────────────────────────────────────
+    # ── DIAGNOSTIC ────────────────────────────────────────────────
     with st.expander("debug: user_state", expanded=True):
         st.write({k: (v if k != "auth_uri" else f"{str(v)[:60]}...") for k, v in _user_state().items()})
         if "_last_consent_extract" in st.session_state:
@@ -145,25 +165,37 @@ with st.sidebar:
             st.write(f"event count: {len(st.session_state['_last_events'])}")
             for i, ev in enumerate(st.session_state["_last_events"]):
                 st.json(ev, expanded=False)
-    # ── END DIAGNOSTIC ────────────────────────────────────────
 
+
+# ─── Chat history ──────────────────────────────────────────────────────────
 for role, text in st.session_state.messages:
     with st.chat_message(role):
         st.markdown(text)
 
+
+# ─── Helpers ───────────────────────────────────────────────────────────────
 def _find_auth_request(event_dict: dict) -> dict | None:
     content = event_dict.get("content") or {}
     for part in content.get("parts") or []:
-        fc = part.get("function_call")
+        fc = part.get("function_call") or part.get("functionCall")
         if fc and fc.get("name") == "adk_request_credential":
             return fc
     return None
 
+
 def _extract_consent(fc: dict) -> tuple[str | None, str | None, dict | None]:
     args = fc.get("args") or {}
-    auth_config = args.get("auth_config") or {}
-    oauth2 = (auth_config.get("exchanged_auth_credential") or {}).get("oauth2") or {}
-    return oauth2.get("auth_uri"), oauth2.get("nonce"), auth_config
+    auth_config = args.get("auth_config") or args.get("authConfig") or {}
+    exchanged = (
+        auth_config.get("exchanged_auth_credential")
+        or auth_config.get("exchangedAuthCredential")
+        or {}
+    )
+    oauth2 = exchanged.get("oauth2") or {}
+    auth_uri = oauth2.get("auth_uri") or oauth2.get("authUri")
+    nonce = oauth2.get("nonce")
+    return auth_uri, nonce, auth_config
+
 
 async def ensure_session() -> str:
     us = _user_state()
@@ -174,20 +206,26 @@ async def ensure_session() -> str:
     us["session_id"] = sid
     return sid
 
+
 async def run_turn(user_prompt: str) -> str:
     session_id = await ensure_session()
     us = _user_state()
     message = f"[Mode: {st.session_state.mode}] {user_prompt}"
 
     final_text: list[str] = []
+    captured_events: list[dict] = []
+    _log(f"run_turn started, mode={st.session_state.mode}, message={message[:80]}")
     async for event in remote_agent.async_stream_query(
         user_id=st.session_state.user_id,
         session_id=session_id,
         message=message,
     ):
         ev = event if isinstance(event, dict) else event.model_dump()
+        captured_events.append(ev)
+        _log(f"event: {str(ev)[:500]}")
 
         fc = _find_auth_request(ev)
+        _log(f"_find_auth_request returned: {fc is not None}")
         if fc:
             auth_uri, nonce, auth_config = _extract_consent(fc)
             # ── DIAGNOSTIC ────────────────────────────────────────
@@ -198,7 +236,6 @@ async def run_turn(user_prompt: str) -> str:
                 "args_keys": list((fc.get("args") or {}).keys()),
                 "auth_config_keys": list((auth_config or {}).keys()),
             }
-            # ── END DIAGNOSTIC ────────────────────────────────────────
             if auth_uri and nonce:
                 us["auth_uri"] = auth_uri
                 us["nonce"] = nonce
@@ -212,8 +249,11 @@ async def run_turn(user_prompt: str) -> str:
                 if part.get("text"):
                     final_text.append(part["text"])
 
+    st.session_state["_last_events"] = captured_events
     return "".join(final_text) or "(no response)"
 
+
+# ─── Chat input ────────────────────────────────────────────────────────────
 prompt = st.chat_input("Try: 'list my storage buckets' / 'send a test email' / 'list users in Entra'")
 if prompt:
     st.session_state.messages.append(("user", prompt))
