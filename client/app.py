@@ -136,6 +136,13 @@ with st.sidebar:
         st.caption("Click to authorize. After redirect, send your prompt again.")
         st.link_button("→ Authorize", _user_state()["auth_uri"], use_container_width=True)
 
+    # ── DIAGNOSTIC ────────────────────────────────────────
+    with st.expander("debug: user_state", expanded=False):
+        st.write({k: (v if k != "auth_uri" else f"{str(v)[:60]}...") for k, v in _user_state().items()})
+        if "_last_consent_extract" in st.session_state:
+            st.write("last extract:", st.session_state["_last_consent_extract"])
+    # ── END DIAGNOSTIC ────────────────────────────────────────
+
 for role, text in st.session_state.messages:
     with st.chat_message(role):
         st.markdown(text)
@@ -179,6 +186,15 @@ async def run_turn(user_prompt: str) -> str:
         fc = _find_auth_request(ev)
         if fc:
             auth_uri, nonce, auth_config = _extract_consent(fc)
+            # ── DIAGNOSTIC ────────────────────────────────────────
+            st.session_state["_last_consent_extract"] = {
+                "auth_uri_present": bool(auth_uri),
+                "nonce_present": bool(nonce),
+                "fc_keys": list(fc.keys()),
+                "args_keys": list((fc.get("args") or {}).keys()),
+                "auth_config_keys": list((auth_config or {}).keys()),
+            }
+            # ── END DIAGNOSTIC ────────────────────────────────────────
             if auth_uri and nonce:
                 us["auth_uri"] = auth_uri
                 us["nonce"] = nonce
