@@ -1,11 +1,11 @@
 import os
 import vertexai
-
 from dotenv import load_dotenv
+from vertexai import types
+
 load_dotenv()
 
-from vertexai import types
-from adk_auth_demo.agent import root_agent
+from adk_auth_demo.agent import root_agent  # noqa: E402
 
 def main() -> None:
     project_id = os.environ["GOOGLE_CLOUD_PROJECT"]
@@ -31,7 +31,7 @@ def main() -> None:
         http_options=dict(api_version="v1beta1"),
     )
 
-    agent_config={
+    agent_config = {
         "display_name": root_agent.name,
         "identity_type": types.IdentityType.AGENT_IDENTITY,
         "requirements": [
@@ -52,17 +52,11 @@ def main() -> None:
     if agent_id:
         print(f"🔄 Updating existing agent: {agent_id}")
         remote_agent = client.agent_engines.update(
-            name=agent_id,
-            agent=root_agent,
-            config=agent_config,
+            name=agent_id, agent=root_agent, config=agent_config
         )
     else:
         print("🚀 Creating a new agent...")
-        remote_agent = client.agent_engines.create(
-            agent=root_agent,
-            config=agent_config,
-        )
-
+        remote_agent = client.agent_engines.create(agent=root_agent, config=agent_config)
     print(f"✅ Deployed agent: {remote_agent.api_resource.name}")
 
 if __name__ == "__main__":
