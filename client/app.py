@@ -183,6 +183,26 @@ for role, text in st.session_state.messages:
 
 
 # ─── Helpers ───────────────────────────────────────────────────────────────
+def _camel_to_snake(s: str) -> str:
+    out = []
+    for c in s:
+        if c.isupper():
+            out.append("_")
+            out.append(c.lower())
+        else:
+            out.append(c)
+    return "".join(out)
+
+
+def _keys_to_snake(obj):
+    """Recursively convert dict keys from camelCase to snake_case."""
+    if isinstance(obj, dict):
+        return {_camel_to_snake(k): _keys_to_snake(v) for k, v in obj.items()}
+    if isinstance(obj, list):
+        return [_keys_to_snake(v) for v in obj]
+    return obj
+
+
 def _find_auth_request(event_dict: dict) -> dict | None:
     content = event_dict.get("content") or {}
     for part in content.get("parts") or []:
@@ -221,6 +241,8 @@ async def run_turn(user_prompt: str) -> str:
     us = _user_state()
 
     if us.get("resume_pending") and us.get("auth_config") and us.get("fc_id"):
+        # Convert auth_config back to snake_case — ADK's pydantic model expects it.
+        snake_config = _keys_to_snake(us["auth_config"])
         message = genai_types.Content(
             role="user",
             parts=[
@@ -228,7 +250,7 @@ async def run_turn(user_prompt: str) -> str:
                     function_response=genai_types.FunctionResponse(
                         id=us["fc_id"],
                         name="adk_request_credential",
-                        response=us["auth_config"],
+                        response=snake_config,
                     )
                 )
             ],
