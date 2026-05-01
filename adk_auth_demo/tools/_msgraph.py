@@ -2,31 +2,23 @@
 
 Both the 2LO and 3LO tools call this with the SAME endpoint. The only
 thing that differs is the access token attached, and Graph enforces
-server-side which records the caller is allowed to see.
-
-This is the "aha" moment of the demo: identical code, identical query,
-divergent results — because the identity behind the request is different.
+server-side which records the caller is allowed to see. Identical code,
+identical query, divergent results — because the identity behind the
+request is different.
 """
 
 import httpx
-
 from google.adk.auth.auth_credential import AuthCredential
 
 GRAPH_BASE = "https://graph.microsoft.com/v1.0"
-
 
 def _extract_token(credential: AuthCredential) -> str | None:
     if credential.http and credential.http.credentials:
         return credential.http.credentials.token
     return None
 
-
 async def graph_list_users(credential: AuthCredential) -> dict:
-    """Try to list every user in the tenant.
-
-    The function is identity-blind. It always asks for the same thing.
-    What comes back depends on what the token permits.
-    """
+    """Try to list every user in the tenant. Identity-blind by design."""
     token = _extract_token(credential)
     if not token:
         return {"error": "No access token attached to the credential."}
@@ -47,8 +39,6 @@ async def graph_list_users(credential: AuthCredential) -> dict:
             }
 
         if resp.status_code in (401, 403):
-            # Tenant-wide query rejected. Fall back to /me to surface what
-            # the caller IS allowed to see.
             me_resp = await client.get(f"{GRAPH_BASE}/me?{select}", headers=headers)
             if me_resp.status_code == 200:
                 return {
