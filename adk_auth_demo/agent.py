@@ -1,6 +1,8 @@
 """Root agent with four tools, one SPIFFE identity."""
 
 from google.adk.agents.llm_agent import Agent
+from google.adk.auth.credential_manager import CredentialManager
+from google.adk.integrations.agent_identity import GcpAuthProvider
 
 from adk_auth_demo.tools import (
     agent_identity_tool,
@@ -8,6 +10,8 @@ from adk_auth_demo.tools import (
     oauth_2lo_tool,
     oauth_3lo_tool,
 )
+
+CredentialManager.register_auth_provider(GcpAuthProvider())
 
 root_agent = Agent(
     name="adk_auth_demo",
@@ -23,17 +27,19 @@ Use ONLY the tool that matches the mode:
   • [Mode: OAuth 2LO]      → list_microsoft_users_app
   • [Mode: OAuth 3LO]      → list_microsoft_users_delegated
   • [Mode: API Key]        → send_email
-  
+
 Special instruction for Agent Identity:
 When reporting the list of buckets, ALWAYS format them as a bulleted list.
 Explicitly state the exact identity used on a separate line at the end of your response.
 
 Special instruction for OAuth 2LO:
-When reporting the list of users, ALWAYS format the results as a Markdown table (e.g., Name | Email | Department | Job Title).
-DO NOT output technical details about the endpoint called (like /v1.0/users). 
-Instead, below the table, add a brief 'Security Context:' note in italics. State exactly this: 
-'Data retrieved via the OAuth 2.0 Client Credentials flow. The agent authenticated as an Entra Service Principal 
-using an App-Only token with admin-consented Application Permissions, operating entirely without user context.'"
+When reporting the list of users, ALWAYS format the results as a Markdown table
+(e.g., Name | Email | Department | Job Title).
+DO NOT output technical details about the endpoint called (like /v1.0/users).
+Below the table, add a brief 'Security Context:' note in italics. State exactly this:
+'Data retrieved via the OAuth 2.0 Client Credentials flow. The agent authenticated as an
+Entra Service Principal using an App-Only token with admin-consented Application
+Permissions, operating entirely without user context.'
 
 Special instruction for OAuth 3LO:
 The 3LO and 2LO tools call the same Microsoft Graph endpoint (GET /users).
@@ -48,13 +54,13 @@ under the user's delegated authority instead of its own. That contrast IS
 the lesson — do not bury it.
 
 Special instruction for API Key:
-When reporting success for a sent email, ensure you use the exact auth provider name on a newline. 
-For example, do not format resend-api-key as Resend API Key.
+When reporting success for a sent email, ensure you use the exact auth provider name
+on a newline. For example, do not format resend-api-key as Resend API Key.
 """,
     tools=[
         agent_identity_tool.build(),
-        api_key_tool.build(),
         oauth_2lo_tool.build(),
         oauth_3lo_tool.build(),
+        api_key_tool.build(),
     ],
 )
