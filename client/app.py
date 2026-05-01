@@ -8,6 +8,7 @@ import streamlit as st
 import vertexai
 from dotenv import load_dotenv
 from google.auth.transport.requests import Request
+from google.genai import types as genai_types
 
 load_dotenv()
 
@@ -117,10 +118,12 @@ def maybe_finalize_3lo() -> None:
         st.error(f"Failed to finalize consent: {e}")
         return
 
-    # Consent stored in Auth Manager vault. The ADK will pick it up on the
-    # next agent call without re-prompting. Drop all pending UI state.
-    for k in ("auth_uri", "nonce", "fc_id", "auth_config"):
-        us.pop(k, None)
+    # Consent stored in Auth Manager vault. Mark state as ready to resume:
+    # the next call to run_turn will send a function_response with the saved
+    # auth_config back to the agent, resuming the original tool call.
+    us["resume_pending"] = True
+    us.pop("auth_uri", None)
+    us.pop("nonce", None)
     st.query_params.clear()
     st.success("✓ Consent granted. Re-send your prompt to continue.")
 
@@ -154,7 +157,13 @@ with st.sidebar:
     if _user_state().get("auth_uri"):
         st.markdown("---")
         st.caption("Click to authorize. After redirect, send your prompt again.")
-        st.link_button("→ Authorize", _user_state()["auth_uri"], use_container_width=True)
+        st.markdown(
+            f'<a href="{_user_state()["auth_uri"]}" target="_self" '
+            f'style="display:inline-block;padding:0.5rem 1rem;background:#2e66f5;'
+            f'color:white;text-decoration:none;border-radius:0.5rem;'
+            f'text-align:center;width:100%;">→ Authorize</a>',
+            unsafe_allow_html=True,
+        )
 
     # ── DIAGNOSTIC ────────────────────────────────────────────────
     with st.expander("debug: user_state", expanded=True):
@@ -210,11 +219,30 @@ async def ensure_session() -> str:
 async def run_turn(user_prompt: str) -> str:
     session_id = await ensure_session()
     us = _user_state()
-    message = f"[Mode: {st.session_state.mode}] {user_prompt}"
+
+    if us.get("resume_pending") and us.get("auth_config") and us.get("fc_id"):
+        message = genai_types.Content(
+            role="user",
+            parts=[
+                genai_types.Part(
+                    function_response=genai_types.FunctionResponse(
+                        id=us["fc_id"],
+                        name="adk_request_credential",
+                        response=us["auth_config"],
+                    )
+                )
+            ],
+        )
+        us.pop("resume_pending", None)
+        us.pop("auth_config", None)
+        us.pop("fc_id", None)
+        _log("run_turn: resuming with function_response")
+    else:
+        message = f"[Mode: {st.session_state.mode}] {user_prompt}"
+        _log(f"run_turn: fresh prompt, mode={st.session_state.mode}, message={user_prompt[:80]}")
 
     final_text: list[str] = []
     captured_events: list[dict] = []
-    _log(f"run_turn started, mode={st.session_state.mode}, message={message[:80]}")
     async for event in remote_agent.async_stream_query(
         user_id=st.session_state.user_id,
         session_id=session_id,
@@ -254,6 +282,16 @@ async def run_turn(user_prompt: str) -> str:
 
 
 # ─── Chat input ────────────────────────────────────────────────────────────
+# Auto-resume after a successful 3LO consent: if resume_pending is set, run a
+# turn immediately with an empty prompt (run_turn will send the function_response).
+if _user_state().get("resume_pending"):
+    with st.chat_message("assistant"):
+        with st.spinner("Resuming…"):
+            reply = asyncio.run(run_turn(""))
+        st.markdown(reply)
+    st.session_state.messages.append(("assistant", reply))
+    st.rerun()
+
 prompt = st.chat_input("Try: 'list my storage buckets' / 'send a test email' / 'list users in Entra'")
 if prompt:
     st.session_state.messages.append(("user", prompt))
