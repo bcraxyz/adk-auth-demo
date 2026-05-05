@@ -230,7 +230,7 @@ async def ensure_session() -> str:
     us = _user_state()
     if us.get("session_id"):
         return us["session_id"]
-    session = await remote_agent.async_create_session(user_id=st.session_state.user_id)
+    session = remote_agent.async_create_session(user_id=st.session_state.user_id)
     sid = session["id"] if isinstance(session, dict) else session.id
     us["session_id"] = sid
     return sid
