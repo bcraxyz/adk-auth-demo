@@ -35,7 +35,7 @@ def main() -> None:
         "display_name": root_agent.name,
         "identity_type": types.IdentityType.AGENT_IDENTITY,
         "requirements": [
-            "google-adk[agent-identity]",
+            "google-adk[agent-identity] (>=1.32.0)",
             "google-cloud-aiplatform[agent_engines]",
             "google-genai",
             "google-cloud-storage",
